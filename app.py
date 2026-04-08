@@ -52,15 +52,7 @@ Evite exercícios muito simples, tente gerar blocos de código e texto sempre qu
 ## 🧠 Conteúdo Teórico (passo a passo)
 ## ✏️ Exemplos Resolvidos
 ## 📝 Exercícios
-## ✅ Gabarito Comentado
-## 🎮 Sistema de Pontuação
-- Gamificação
-## 🏆 Níveis 
-- Gamificação
-## 🎯 Desafio Final 
-- Gamificação
-
-
+## ✅ Gabarito
 
 Seja claro, didático e organizado.
 """
@@ -82,3 +74,76 @@ Seja claro, didático e organizado.
 
     except Exception as e:
         return f"Erro ao conectar com Ollama: {e}"
+
+# 3 - Gamificação do Conteúdo
+
+def apply_gamification(content, data):
+
+    if not content:
+        return "Erro: conteúdo vazio"
+
+    prompt = f"""
+
+A resposta deve ser OBRIGATORIAMENTE em português (pt-br)
+Você é especialista em gamificação educacional.
+Seja criativo, evite respostas curtas para preencher as seções e indique plataformas de gamificação que podem ser usadas para implementar a dinâmica.
+
+-----------------------------------
+{content}
+-----------------------------------
+
+Para cada seção:
+
+🎮 Sistema de Pontuação
+Explique como funciona a pontuação
+
+🏆 Níveis
+Defina níveis com critérios claros
+
+🎯 Desafio Final
+Crie um desafio coerente com o tema: {data['tema']}
+
+-----------------------------------
+
+Retorne o plano COMPLETO atualizado.
+"""
+
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False
+            }
+        )
+
+        if response.status_code == 200:
+            return response.json().get("response", content)
+        else:
+            return content
+
+    except Exception as e:
+        return content + f"\n\nErro: {e}"
+
+
+# Pipeline
+
+def pipeline(data):
+    step1 = analyze_input(data)
+
+    if "erro" in step1:
+        return {
+            "erro": True,
+            "mensagens": step1["mensagens"]
+        }
+
+    step2 = generate_content(step1)
+    step3 = apply_gamification(step2, step1)
+
+    resultado_final = step2 + "\n\n---\n\n" + step3
+
+    return {
+        "erro": False,
+        "resultado": resultado_final
+    }
