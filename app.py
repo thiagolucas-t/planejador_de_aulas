@@ -159,7 +159,6 @@ def save_or_update_history(data, historico):
 
     registros = []
 
-    # 🔹 carregar arquivo se existir
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             try:
@@ -185,7 +184,6 @@ def save_or_update_history(data, historico):
             "historico": historico
         })
 
-    # 🔥 salva como JSON válido
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(registros, f, ensure_ascii=False, indent=2)
 
@@ -201,7 +199,7 @@ tema = st.text_input("Tema da aula")
 nivel = st.selectbox("Nível", ["Iniciante", "Intermediário", "Avançado"])
 objetivo = st.text_area("Objetivo de aprendizagem")
 
-if st.button("🚀 Gerar Aula"):
+if st.button("Gerar Aula"):
 
     data = {
         "tema": tema,
@@ -221,3 +219,127 @@ if st.button("🚀 Gerar Aula"):
             st.session_state["historico"] = [response["resultado"]]
             save_or_update_history(data, st.session_state["historico"])
             st.session_state["data"] = data
+
+def refine_content(original_content, feedback, data):
+    prompt = f"""
+Você é um professor especialista em didática.
+
+Sua tarefa é RESPONDER APENAS com o ajuste solicitado pelo usuário.
+
+-----------------------------------
+REGRAS (OBRIGATÓRIAS):
+
+- NÃO reescreva o plano de aula
+- NÃO repita conteúdos anteriores
+- NÃO recrie títulos já existentes
+- NÃO explique o que você fez
+- NÃO diga "aqui está o plano atualizado"
+
+✔ Retorne SOMENTE o conteúdo novo solicitado
+
+-----------------------------------
+
+CONTEXTO:
+
+Tema: {data['tema']}
+
+-----------------------------------
+
+PLANO ORIGINAL (APENAS PARA REFERÊNCIA):
+{original_content}
+
+-----------------------------------
+
+FEEDBACK DO USUÁRIO:
+{feedback}
+
+
+"""
+
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "num_predict": 400
+                }
+            }
+        )
+
+        if response.status_code == 200:
+            data_json = response.json()
+
+            if "response" in data_json and data_json["response"].strip():
+                print(response.json())
+                return data_json["response"]
+            else:
+                print(response.json())
+                return original_content + "\n\n⚠️ Refinamento não gerou resposta válida."
+
+        else:
+            print(response.json())
+            return original_content + f"\n\nErro na API: {response.status_code}"
+
+    except Exception as e:
+        return original_content + f"\n\nErro no refinamento: {e}"
+
+
+#  FEEDBACK ITERATIVO
+if "historico" in st.session_state:
+
+    st.success("Aula gerada com sucesso!")
+
+    for i, versao in enumerate(st.session_state["historico"]):
+        if i == 0:
+            st.markdown("### Plano de Aula Inicial")
+        else:
+            st.markdown(f"### 🔄 Ajustes")
+
+        st.markdown(versao)
+        st.markdown("---")
+
+    st.markdown("### 💬 Feedback")
+    st.write(
+        "O plano de aula está de acordo com o esperado?"
+    )
+
+    feedback = st.text_area(
+        "Ajuste seu plano de aula:",
+        key="feedback_input",
+        value="",
+        placeholder="Pergunte alguma coisa"
+    )
+
+    col1, col2 = st.columns(2)
+
+    # Botão Feedback (loop)
+    with col1:
+        if st.button("🔄 Ajustar Aula"):
+            if feedback:
+                with st.spinner("Refinando aula com base no feedback..."):
+
+                    ultimo = st.session_state["historico"][-1]
+
+                    novo_resultado = refine_content(
+                        ultimo,
+                        feedback,
+                        st.session_state["data"]
+                    )
+                    st.session_state["historico"].append(novo_resultado)
+                    save_or_update_history(st.session_state["data"], st.session_state["historico"])
+
+                    st.success("Aula refinada com sucesso!")
+
+                    st.rerun()
+
+            else:
+                st.warning("Digite um feedback!.")
+
+    # BOTÃO RESETAR
+    with col2:
+        if st.button("♻️ Gerar Nova Aula"):
+            st.session_state.clear()
+            st.rerun()
