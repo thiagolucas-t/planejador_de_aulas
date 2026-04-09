@@ -1,6 +1,9 @@
 import requests
-
-
+import streamlit as st
+import json
+import uuid
+import os
+from datetime import datetime
 
 # 1 - Análise do Input
 
@@ -126,7 +129,6 @@ Retorne o plano COMPLETO atualizado.
     except Exception as e:
         return content + f"\n\nErro: {e}"
 
-
 # Pipeline
 
 def pipeline(data):
@@ -147,3 +149,75 @@ def pipeline(data):
         "erro": False,
         "resultado": resultado_final
     }
+
+# Sistema de Arquivos
+
+def save_or_update_history(data, historico):
+
+    os.makedirs("data", exist_ok=True)
+    file_path = "data/aulas.json"
+
+    registros = []
+
+    # 🔹 carregar arquivo se existir
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            try:
+                registros = json.load(f)
+            except:
+                registros = []
+
+    atualizado = False
+
+    for r in registros:
+        if r["id"] == data["id"]:
+            r["historico"] = historico
+            atualizado = True
+            break
+
+    if not atualizado:
+        registros.append({
+            "id": data["id"],
+            "tema": data["tema"],
+            "nivel": data["nivel"],
+            "objetivo": data["objetivo"],
+            "criado_em": datetime.now().isoformat(),
+            "historico": historico
+        })
+
+    # 🔥 salva como JSON válido
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(registros, f, ensure_ascii=False, indent=2)
+
+
+# Interface Web
+
+st.set_page_config(page_title="Plano de Aula com IA", layout="centered")
+
+st.title("Plano de Aula com IA 🎓")
+st.write("Preencha os dados e gere automaticamente uma aula completa.")
+
+tema = st.text_input("Tema da aula")
+nivel = st.selectbox("Nível", ["Iniciante", "Intermediário", "Avançado"])
+objetivo = st.text_area("Objetivo de aprendizagem")
+
+if st.button("🚀 Gerar Aula"):
+
+    data = {
+        "tema": tema,
+        "nivel": nivel,
+        "objetivo": objetivo,
+        "id": str(uuid.uuid4())
+    }
+
+    with st.spinner("Gerando aula com IA..."):
+
+        response = pipeline(data)
+
+        if response["erro"]:
+            for msg in response["mensagens"]:
+                st.warning(msg)
+        else:
+            st.session_state["historico"] = [response["resultado"]]
+            save_or_update_history(data, st.session_state["historico"])
+            st.session_state["data"] = data
