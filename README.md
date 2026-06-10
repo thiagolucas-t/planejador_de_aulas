@@ -82,6 +82,8 @@ ollama run llama3
 
 ## Como Executar
 
+Após executar todas as dependências, rode no terminal:
+
 ```bash
 python -m streamlit run app.py
 ```
