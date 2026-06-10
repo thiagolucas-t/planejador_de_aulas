@@ -48,6 +48,14 @@ O sistema segue um pipeline com 3 etapas principais:
 
 ## Dependências
 
+### Instalar o Python
+
+Baixe em:
+
+https://www.python.org/downloads/
+
+---
+
 ### Instalar bibliotecas Python
 
 ```bash
