@@ -142,4 +142,4 @@ Essas técnicas garantem maior controle sobre a saída da LLM.
 
 ## Autor
 
-Projeto desenvolvido como atividade acadêmica na disciplina de Programação Avançada.
+Projeto desenvolvido por Thiago Lucas e Quezia Francinne como atividade acadêmica na disciplina de Programação Avançada.
